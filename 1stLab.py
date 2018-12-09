@@ -4,6 +4,9 @@ from nltk.tokenize import PunktSentenceTokenizer as PST
 from nltk.tokenize import WordPunctTokenizer as WPT
 import string
 from nltk.corpus import stopwords
+import warnings
+warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
+import gensim
 
 ma = MA()
 st = PST()
@@ -38,13 +41,24 @@ while i<len(tokens2):
     tokens2[i] = tokens2[i].lower()
     i = i + 1
 i = 0
+w2v_fpath = "all.norm-sz100-w10-cb0-it1-min100.w2v"
+w2v = gensim.models.KeyedVectors.load_word2vec_format(w2v_fpath, binary=True, unicode_errors='ignore')
+w2v.init_sims(replace=True)
 while i<min(len(tokens1),len(tokens2)):
     if tokens1[i] == tokens2[i]:
         i = i + 1
     else:
-        
-        print(result)
+        result = w2v.similarity(tokens1[i],tokens2[i])
+        print(tokens1[i],' ',tokens2[i],' ',result)
+        if result < 0.35:
+            print(tokens1[i],'-',tokens2[i],'Неправильный перевод, возможно неверное слово')
+        else:
+            if result > 0.35 and result < 0.7:
+                print(tokens1[i],'-',tokens2[i],'Неправильный перевод, корректировка')
+            else:
+                print(tokens1[i],'-',tokens2[i],'Неправильный перевод, неверный падеж')
+        i = i + 1
 
-#print(tokens1)
-#print(tokens2)
+print(tokens1)
+print(tokens2)
 
