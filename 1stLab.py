@@ -1,12 +1,10 @@
 from pymorphy2 import MorphAnalyzer as MA
-
 from nltk.tokenize import PunktSentenceTokenizer as PST
 from nltk.tokenize import WordPunctTokenizer as WPT
 import string
 from nltk.corpus import stopwords
-import warnings
-warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 import gensim
+import sys
 
 ma = MA()
 st = PST()
@@ -25,6 +23,8 @@ text2 = """Каждый человек имеет право на образов
 а доступ к высшему образованию должен быть обеспечен наравне со всеми и
 на основе компетенции."""
 
+sys.stdout = open('Result1.txt', 'w')
+
 tokens1 = wt.tokenize(text1)        # Разбиваем на слова
 tokens2 = wt.tokenize(text2)
 functors_pos = {'INTJ', 'PRCL', 'CONJ', 'PREP'}                     # Удаляем пунктуацию
@@ -41,24 +41,29 @@ while i<len(tokens2):
     tokens2[i] = tokens2[i].lower()
     i = i + 1
 i = 0
+j = 0
 w2v_fpath = "all.norm-sz100-w10-cb0-it1-min100.w2v"
 w2v = gensim.models.KeyedVectors.load_word2vec_format(w2v_fpath, binary=True, unicode_errors='ignore')
 w2v.init_sims(replace=True)
 while i<min(len(tokens1),len(tokens2)):
+    result = w2v.similarity(tokens1[j],tokens2[i])
     if tokens1[i] == tokens2[i]:
         i = i + 1
+        j = j + 1
     else:
-        result = w2v.similarity(tokens1[i],tokens2[i])
-        print(tokens1[i],' ',tokens2[i],' ',result)
-        if result < 0.35:
-            print(tokens1[i],'-',tokens2[i],'Неправильный перевод, возможно неверное слово')
-        else:
-            if result > 0.35 and result < 0.7:
-                print(tokens1[i],'-',tokens2[i],'Неправильный перевод, корректировка')
+        if result < 0.3:
+            print(tokens1[j],'-',tokens2[i],result,'Неправильный перевод, отсутствует слово')
+            if tokens1[j+1] == tokens2[i]:
+                j = j + 1
             else:
-                print(tokens1[i],'-',tokens2[i],'Неправильный перевод, неверный падеж')
+                i = i + 1
+        if result > 0.3 and result < 0.75:
+            print(tokens1[j],'-',tokens2[i],result,'Неправильный перевод, неверный перевод')
+        if result > 0.75 and result < 1:
+            print(tokens1[j],'-',tokens2[i],result,'Неправильный перевод, корректировка')
         i = i + 1
+        j = j + 1
 
 print(tokens1)
 print(tokens2)
-
+sys.stdout.close()

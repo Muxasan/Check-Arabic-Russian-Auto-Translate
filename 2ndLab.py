@@ -2,10 +2,10 @@ from pymorphy2 import MorphAnalyzer as MA
 from nltk.tokenize import PunktSentenceTokenizer as PST
 from nltk.tokenize import WordPunctTokenizer as WPT
 import string
-from nltk.corpus import stopwords
 import gensim
 from nltk.tokenize import sent_tokenize
 from nltk.tokenize import word_tokenize
+import sys
 
 ma = MA()
 st = PST()
@@ -25,13 +25,13 @@ text2 = """Каждый человек имеет право на образов
 а доступ к высшему образованию должен быть обеспечен наравне со всеми и
 на основе компетенции."""
 
+sys.stdout = open('Result2.txt','w')
+
 text = open('./zakon-ob-obrazovanii-v-RF.txt', 'r', encoding='utf-8').read()
 def tokenize_ru(file_text):
     tokens = word_tokenize(file_text)
     tokens = [i for i in tokens if (i not in string.punctuation)]
-    stop_words = stopwords.words('russian')
-    stop_words.extend(['что', 'это', 'так', 'вот', 'быть', 'как', 'в', '—', '–', 'к', 'на', '...'])
-    tokens = [i for i in tokens if (i not in stop_words)]
+    tokens = [i for i in tokens1 if ( ma.parse(i)[0].tag.POS not in functors_pos )]
     tokens = [i.replace("«", "").replace("»", "") for i in tokens]
     return tokens
 
@@ -52,25 +52,29 @@ while i<len(tokens2):
     i = i + 1
 
 sentences = [tokenize_ru(sent) for sent in sent_tokenize(text, 'russian')]
-print(len(sentences))
-print(sentences[200:209])
-model = gensim.models.Word2Vec(sentences, size=150, window=5, min_count=5, workers=4)
+model = gensim.models.Word2Vec(sentences, size=500, window=5, min_count=1, workers=4)
 model.train(sentences, total_examples=model.corpus_count, epochs=model.iter)
 i = 0
+j = 0
 while i<min(len(tokens1),len(tokens2)):
+    result = model.wv.similarity(tokens1[i],tokens2[i])
     if tokens1[i] == tokens2[i]:
         i = i + 1
+        j = j + 1
     else:
-        result = model.wv.similarity(tokens1[i],tokens2[i])
-        if result < 0.35:
-            print(tokens1[i],'-',tokens2[i],result,'Неправильный перевод, возможно неверное слово')
-        else:
-            if result > 0.35 and result < 0.7:
-                print(tokens1[i],'-',tokens2[i],result,'Неправильный перевод, корректировка')
+        if result < 0.4:
+            print(tokens1[j],'-',tokens2[i],result,'Неправильный перевод, отсутствует слово')
+            if tokens1[j+1] == tokens2[i]:
+                j = j + 1
             else:
-                print(tokens1[i],'-',tokens2[i],result,'Неправильный перевод, неверный падеж')
+                i = i + 1
+        if result > 0.4 and result < 0.7:
+            print(tokens1[j],'-',tokens2[i],result,'Неправильный перевод, неверный перевод')
+        if result > 0.70 and result < 1:
+            print(tokens1[j],'-',tokens2[i],result,'Неправильный перевод, корректировка')
         i = i + 1
+        j = j + 1
 
 print(tokens1)
 print(tokens2)
-
+sys.stdout.close()
